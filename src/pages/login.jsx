@@ -65,7 +65,7 @@ function Login() {
 
     setLoading(true);
     try {
-      const url = import.meta.env.VITE_USERLOG_URL;
+      const url = import.meta.env.VITE_BACKEND_URL + "/login";
       if (!url) {
         setFormError("Login URL not configured. Set VITE_USERLOG_URL.");
         setLoading(false);
