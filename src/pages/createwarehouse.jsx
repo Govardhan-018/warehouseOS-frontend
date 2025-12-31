@@ -16,9 +16,9 @@ function CreateWarehouse() {
 
   const validateForm = () => {
     const errors = [];
-    if (!formData.name.trim()) errors.push("Warehouse name is required");
-    if (!formData.location.trim()) errors.push("Location is required");
-    if (!formData.capacity || formData.capacity <= 0) errors.push("Storage capacity must be greater than 0");
+    if (!formData.name.trim()) errors.push("Node designation required");
+    if (!formData.location.trim()) errors.push("Geo-location required");
+    if (!formData.capacity || formData.capacity <= 0) errors.push("Valid storage capacity required");
     return errors;
   };
 
@@ -31,10 +31,7 @@ function CreateWarehouse() {
   };
 
   const handleBlur = (field) => {
-    setTouched((prev) => ({
-      ...prev,
-      [field]: true,
-    }));
+    setTouched((prev) => ({ ...prev, [field]: true }));
   };
 
   const handleSubmit = async (e) => {
@@ -42,7 +39,6 @@ function CreateWarehouse() {
     setError("");
     setSuccess(false);
 
-    // Validate form
     const errors = validateForm();
     setTouched({ name: true, location: true, capacity: true });
 
@@ -58,7 +54,6 @@ function CreateWarehouse() {
       const userEmail = localStorage.getItem("mail");
 
       if (!token) {
-        setError("No authentication token. Please log in again.");
         navigate("/");
         return;
       }
@@ -82,192 +77,199 @@ function CreateWarehouse() {
         throw new Error(errData?.error || `Server error: ${res.status}`);
       }
 
-      const data = await res.json();
       setSuccess(true);
       setFormData({ name: "", location: "", capacity: "" });
 
-      // Redirect to home after 2 seconds
       setTimeout(() => {
         navigate("/home");
       }, 2000);
     } catch (err) {
       console.error("Error creating warehouse:", err);
-      setError(err?.message || "Failed to create warehouse. Please try again.");
+      setError(err?.message || "Initialization failed. Check network connection.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-50">
-      {/* Navbar */}
+    <div className="min-h-screen w-full bg-[#030712] text-slate-200 font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
+      
+      {/* Background Matrix */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_-20%,#0f172a,transparent)] opacity-60"></div>
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-20"></div>
+      </div>
+
       <Navbar />
 
-      {/* Main Content */}
-      <main className="mx-auto max-w-2xl px-6 py-12 md:px-8">
-        <div className="rounded-3xl border border-slate-800/70 bg-slate-950/70 px-8 py-10 shadow-[0_18px_60px_rgba(15,23,42,0.9)] backdrop-blur-2xl">
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-slate-50 mb-2">
-              Create New Warehouse
-            </h1>
-            <p className="text-slate-400">
-              Add a new warehouse to your network and start managing inventory
-            </p>
+      <main className="relative z-10 max-w-3xl mx-auto px-6 py-12">
+        
+        {/* --- Header --- */}
+        <div className="text-center mb-12 animate-fade-in-down">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-mono uppercase tracking-widest mb-4">
+            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+            System Expansion
           </div>
-
-          {/* Success Message */}
-          {success && (
-            <div className="mb-6 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100 backdrop-blur flex items-center gap-2">
-              <span className="text-lg">✓</span>
-              Warehouse created successfully! Redirecting to dashboard...
-            </div>
-          )}
-
-          {/* Error Message */}
-          {error && (
-            <div className="mb-6 rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-100 backdrop-blur">
-              {error}
-            </div>
-          )}
-
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-6" noValidate>
-            {/* Warehouse Name */}
-            <div className="space-y-2">
-              <label htmlFor="name" className="flex items-center justify-between text-sm font-medium text-slate-300">
-                <span>Warehouse Name</span>
-                {touched.name && formData.name.trim() && (
-                  <span className="flex items-center gap-1 text-xs text-emerald-300">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                    Valid
-                  </span>
-                )}
-              </label>
-              <div className={`group flex items-center rounded-2xl border bg-slate-900/70 px-4 py-3 text-sm shadow-inner backdrop-blur transition ${touched.name && !formData.name.trim() ? "border-red-500/60" : "border-slate-700/70 focus-within:border-cyan-400/80"}`}>
-                <input
-                  id="name"
-                  name="name"
-                  type="text"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  onBlur={() => handleBlur("name")}
-                  placeholder="e.g., Central Warehouse, Regional Hub"
-                  className="flex-1 bg-transparent text-slate-50 placeholder:text-slate-500 focus:outline-none"
-                  required
-                />
-              </div>
-              {touched.name && !formData.name.trim() && (
-                <p className="text-xs text-red-300">Warehouse name is required</p>
-              )}
-            </div>
-
-            {/* Location */}
-            <div className="space-y-2">
-              <label htmlFor="location" className="flex items-center justify-between text-sm font-medium text-slate-300">
-                <span>Location</span>
-                {touched.location && formData.location.trim() && (
-                  <span className="flex items-center gap-1 text-xs text-emerald-300">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                    Valid
-                  </span>
-                )}
-              </label>
-              <div className={`group flex items-center rounded-2xl border bg-slate-900/70 px-4 py-3 text-sm shadow-inner backdrop-blur transition ${touched.location && !formData.location.trim() ? "border-red-500/60" : "border-slate-700/70 focus-within:border-cyan-400/80"}`}>
-                <span className="mr-2 text-slate-500">📍</span>
-                <input
-                  id="location"
-                  name="location"
-                  type="text"
-                  value={formData.location}
-                  onChange={handleInputChange}
-                  onBlur={() => handleBlur("location")}
-                  placeholder="e.g., New York, USA"
-                  className="flex-1 bg-transparent text-slate-50 placeholder:text-slate-500 focus:outline-none"
-                  required
-                />
-              </div>
-              {touched.location && !formData.location.trim() && (
-                <p className="text-xs text-red-300">Location is required</p>
-              )}
-            </div>
-
-            {/* Storage Capacity */}
-            <div className="space-y-2">
-              <label htmlFor="capacity" className="flex items-center justify-between text-sm font-medium text-slate-300">
-                <span>Storage Capacity (units)</span>
-                {touched.capacity && formData.capacity > 0 && (
-                  <span className="flex items-center gap-1 text-xs text-emerald-300">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                    Valid
-                  </span>
-                )}
-              </label>
-              <div className={`group flex items-center rounded-2xl border bg-slate-900/70 px-4 py-3 text-sm shadow-inner backdrop-blur transition ${touched.capacity && (!formData.capacity || formData.capacity <= 0) ? "border-red-500/60" : "border-slate-700/70 focus-within:border-cyan-400/80"}`}>
-                <span className="mr-2 text-slate-500">📦</span>
-                <input
-                  id="capacity"
-                  name="capacity"
-                  type="number"
-                  value={formData.capacity}
-                  onChange={handleInputChange}
-                  onBlur={() => handleBlur("capacity")}
-                  placeholder="e.g., 5000"
-                  className="flex-1 bg-transparent text-slate-50 placeholder:text-slate-500 focus:outline-none"
-                  min="1"
-                  required
-                />
-              </div>
-              {touched.capacity && (!formData.capacity || formData.capacity <= 0) && (
-                <p className="text-xs text-red-300">Storage capacity must be greater than 0</p>
-              )}
-            </div>
-
-            {/* Form Actions */}
-            <div className="flex gap-4 pt-4">
-              <button
-                type="submit"
-                disabled={loading}
-                className="group relative inline-flex flex-1 items-center justify-center gap-2 overflow-hidden rounded-2xl bg-gradient-to-r from-cyan-400 via-sky-400 to-emerald-400 px-6 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/40 transition hover:shadow-cyan-400/60 disabled:cursor-not-allowed disabled:opacity-70"
-              >
-                <span className="absolute inset-0 bg-gradient-to-r from-white/10 via-transparent to-white/10 opacity-0 group-hover:opacity-30 transition" />
-                {loading ? (
-                  <>
-                    <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" className="opacity-30" />
-                      <path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-                    </svg>
-                    <span>Creating...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Create Warehouse</span>
-                    <span className="text-xs opacity-80 group-hover:translate-x-0.5 transition-transform">↳</span>
-                  </>
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => navigate("/home")}
-                className="rounded-2xl border border-slate-700/50 bg-slate-900/50 px-6 py-3 text-sm font-medium text-slate-100 transition hover:border-slate-600 hover:bg-slate-900"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-
-          {/* Info Box */}
-          <div className="mt-8 rounded-2xl border border-slate-800/50 bg-slate-900/30 p-4 text-sm text-slate-300 backdrop-blur">
-            <p className="font-medium text-slate-100 mb-2">📋 Warehouse Information</p>
-            <ul className="space-y-1 text-xs text-slate-400">
-              <li>• Warehouse name should be unique and descriptive</li>
-              <li>• Location helps organize warehouses geographically</li>
-              <li>• Storage capacity is the maximum units this warehouse can hold</li>
-            </ul>
-          </div>
+          <h1 className="text-3xl md:text-4xl font-bold text-white tracking-tight">
+            Initialize <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-emerald-400">New Node</span>
+          </h1>
+          <p className="text-slate-500 mt-3 max-w-lg mx-auto">
+            Configure a new warehouse terminal to expand the neural tracking network.
+          </p>
         </div>
+
+        {/* --- Success View --- */}
+        {success ? (
+          <div className="bg-[#0b1121] border border-emerald-500/30 rounded-2xl p-12 text-center shadow-2xl shadow-emerald-900/20 animate-fade-in-up">
+            <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+              <svg className="w-10 h-10 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+            </div>
+            <h2 className="text-2xl font-bold text-white mb-2">Node Online</h2>
+            <p className="text-slate-400 mb-6">Telemetry established. Redirecting to dashboard...</p>
+            <div className="h-1 w-32 bg-slate-800 rounded-full mx-auto overflow-hidden">
+              <div className="h-full bg-emerald-500 animate-[progress_2s_ease-in-out]"></div>
+            </div>
+          </div>
+        ) : (
+          
+          /* --- Form View --- */
+          <div className="bg-[#0b1121] border border-slate-800 rounded-2xl p-8 md:p-10 shadow-2xl relative overflow-hidden animate-fade-in-up">
+            
+            {/* Gloss Effect */}
+            <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none">
+               <svg className="w-64 h-64 text-cyan-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zm0 9l2.5-1.25L12 8.5l-2.5 1.25L12 11zm0 2.5l-5-2.5-5 2.5 10 5 10-5-5-2.5-5 2.5z"/></svg>
+            </div>
+
+            {/* Error Banner */}
+            {error && (
+              <div className="mb-8 p-4 rounded-xl bg-red-500/10 border border-red-500/20 flex items-start gap-3 animate-shake">
+                <svg className="w-5 h-5 text-red-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                <div className="text-red-300 text-sm font-medium">{error}</div>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-8 relative z-10">
+              
+              {/* Name Input */}
+              <div className="space-y-2">
+                <label className="text-xs font-mono font-semibold text-slate-400 uppercase tracking-wider ml-1">
+                  Node Designation
+                </label>
+                <div className="relative group">
+                  <input
+                    type="text"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    onBlur={() => handleBlur("name")}
+                    placeholder="e.g. Sector 7 Distribution"
+                    className={`w-full bg-slate-900/50 border rounded-xl px-4 py-4 text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 transition-all ${touched.name && !formData.name.trim() ? 'border-red-500/50 focus:border-red-500 focus:ring-red-500' : 'border-slate-700 focus:border-cyan-500 focus:ring-cyan-500'}`}
+                  />
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500 group-hover:text-cyan-400 transition-colors">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                  </div>
+                </div>
+              </div>
+
+              {/* Location Input */}
+              <div className="space-y-2">
+                <label className="text-xs font-mono font-semibold text-slate-400 uppercase tracking-wider ml-1">
+                  Geo-Coordinates / Address
+                </label>
+                <div className="relative group">
+                  <input
+                    type="text"
+                    name="location"
+                    value={formData.location}
+                    onChange={handleInputChange}
+                    onBlur={() => handleBlur("location")}
+                    placeholder="e.g. 192.168.1.1 or Physical Address"
+                    className={`w-full bg-slate-900/50 border rounded-xl px-4 py-4 text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 transition-all ${touched.location && !formData.location.trim() ? 'border-red-500/50 focus:border-red-500 focus:ring-red-500' : 'border-slate-700 focus:border-cyan-500 focus:ring-cyan-500'}`}
+                  />
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500 group-hover:text-cyan-400 transition-colors">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                  </div>
+                </div>
+              </div>
+
+              {/* Capacity Input */}
+              <div className="space-y-2">
+                <label className="text-xs font-mono font-semibold text-slate-400 uppercase tracking-wider ml-1">
+                  Storage Matrix Capacity
+                </label>
+                <div className="relative group">
+                  <input
+                    type="number"
+                    name="capacity"
+                    value={formData.capacity}
+                    onChange={handleInputChange}
+                    onBlur={() => handleBlur("capacity")}
+                    placeholder="e.g. 50000"
+                    min="1"
+                    className={`w-full bg-slate-900/50 border rounded-xl px-4 py-4 text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 transition-all ${touched.capacity && (!formData.capacity || formData.capacity <= 0) ? 'border-red-500/50 focus:border-red-500 focus:ring-red-500' : 'border-slate-700 focus:border-cyan-500 focus:ring-cyan-500'}`}
+                  />
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500 group-hover:text-cyan-400 transition-colors text-xs font-mono">
+                    UNITS
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="grid grid-cols-2 gap-4 pt-4">
+                <button
+                  type="button"
+                  onClick={() => navigate("/home")}
+                  className="px-6 py-4 rounded-xl border border-slate-700 text-slate-400 hover:text-white hover:bg-slate-800 transition-all font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="px-6 py-4 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold tracking-wide shadow-lg shadow-cyan-900/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                >
+                  {loading ? (
+                    <>
+                      <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                      <span>Initializing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Deploy Node</span>
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                    </>
+                  )}
+                </button>
+              </div>
+
+            </form>
+          </div>
+        )}
+
       </main>
+
+      <style>{`
+        @keyframes fade-in-down {
+          from { opacity: 0; transform: translateY(-10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fade-in-up {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes progress {
+          from { width: 0%; }
+          to { width: 100%; }
+        }
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          25% { transform: translateX(-4px); }
+          75% { transform: translateX(4px); }
+        }
+        .animate-fade-in-down { animation: fade-in-down 0.6s ease-out; }
+        .animate-fade-in-up { animation: fade-in-up 0.6s ease-out backwards; }
+        .animate-shake { animation: shake 0.3s ease-in-out; }
+      `}</style>
     </div>
   );
 }

@@ -12,6 +12,7 @@ function Warehouse() {
   const [error, setError] = useState("");
   const [dispatchingId, setDispatchingId] = useState(null);
 
+  // Load Data
   useEffect(() => {
     const loadWarehouse = async () => {
       try {
@@ -24,12 +25,13 @@ function Warehouse() {
           return;
         }
 
+        // 1. Get ID from local storage
         let stored = null;
         try {
           const raw = localStorage.getItem("currentWarehouse");
           if (raw) stored = JSON.parse(raw);
         } catch (e) {
-          console.warn("Failed to parse currentWarehouse from localStorage", e);
+          console.warn("Storage parse error", e);
         }
 
         if (!stored) {
@@ -37,17 +39,14 @@ function Warehouse() {
           return;
         }
 
-        const warehouseId =
-          stored.id ||
-          stored.warehouse_id ||
-          stored.warehouseId ||
-          stored.warehouseid;
+        const warehouseId = stored.id || stored.warehouse_id || stored.warehouseId || stored.warehouseid;
 
         if (!warehouseId) {
-          setError("Selected warehouse has no id.");
+          setError("Invalid warehouse ID reference.");
           return;
         }
 
+        // 2. Fetch Fresh Data
         const res = await fetch(`${BACKEND_BASE}/getinfo_warehouse`, {
           method: "POST",
           headers: {
@@ -59,22 +58,20 @@ function Warehouse() {
 
         if (!res.ok) {
           if (res.status === 401) {
-            localStorage.removeItem("token");
-            localStorage.removeItem("token_expiry");
-            localStorage.removeItem("mail");
+            localStorage.clear();
             navigate("/");
             return;
           }
           const errData = await res.json().catch(() => ({}));
-          throw new Error(errData?.error || `Server error: ${res.status}`);
+          throw new Error(errData?.error || "Failed to retrieve node telemetry.");
         }
 
         const data = await res.json();
         setWarehouse(data.warehouse || stored);
         setBatches(data.batches || []);
       } catch (err) {
-        console.error("Error loading warehouse:", err);
-        setError(err?.message || "Failed to load warehouse.");
+        console.error("Warehouse load error:", err);
+        setError(err?.message || "Telemetry connection failed.");
       } finally {
         setLoading(false);
       }
@@ -83,42 +80,23 @@ function Warehouse() {
     loadWarehouse();
   }, [navigate]);
 
-  const handleBack = () => {
-    navigate("/home");
-  };
-
+  // Navigation Helpers
   const goWithWarehouse = (path) => {
     if (!warehouse) return;
-    try {
-      localStorage.setItem("currentWarehouse", JSON.stringify(warehouse));
-    } catch (e) {
-      console.warn("Failed to save warehouse before navigation", e);
-    }
+    localStorage.setItem("currentWarehouse", JSON.stringify(warehouse));
     navigate(path);
   };
 
-  const handleAddProduct = () => goWithWarehouse("/create-product");
-  const handleAddSensor = () => goWithWarehouse("/create-sensor");
-  const handleAddBatch = () => goWithWarehouse("/add-batch");
-
-  // Dispatch (outboard) a batch using /delete-batch
+  // Dispatch Action
   const handleDispatch = async (batch) => {
     const token = localStorage.getItem("token");
     const mail = localStorage.getItem("mail");
-    if (!token || !mail) {
-      navigate("/");
-      return;
-    }
-
     const batchId = batch.id || batch.batch_id;
-    if (!batchId) {
-      console.warn("Batch has no id, cannot dispatch");
-      return;
-    }
+
+    if (!token || !mail || !batchId) return;
 
     setDispatchingId(batchId);
-    setError("");
-
+    
     try {
       const res = await fetch(`${BACKEND_BASE}/delete-batch`, {
         method: "POST",
@@ -129,189 +107,263 @@ function Warehouse() {
         body: JSON.stringify({ mail, batchId }),
       });
 
-      if (!res.ok) {
-        const txt = await res.text().catch(() => "");
-        let parsed;
-        try {
-          parsed = JSON.parse(txt);
-        } catch {
-          parsed = null;
-        }
-        throw new Error(parsed?.error || txt || `Server error: ${res.status}`);
-      }
+      if (!res.ok) throw new Error("Dispatch command failed.");
 
-      // Remove batch from local state
-      setBatches((prev) =>
-        prev.filter((b) => (b.id || b.batch_id) !== batchId)
-      );
+      // Optimistic UI Update
+      setBatches((prev) => prev.filter((b) => (b.id || b.batch_id) !== batchId));
     } catch (err) {
-      console.error("Dispatch batch error:", err);
-      setError(err?.message || "Failed to dispatch batch");
+      console.error("Dispatch error:", err);
+      alert("Failed to dispatch batch: " + err.message);
     } finally {
       setDispatchingId(null);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-950 text-slate-50">
-        <Navbar />
-        <main className="mx-auto max-w-5xl px-4 pb-16 pt-8 md:px-8">
-          <div className="flex flex-col items-center justify-center gap-4 py-20">
-            <div className="h-9 w-9 animate-spin rounded-full border-4 border-slate-700 border-t-cyan-400" />
-            <p className="text-sm text-slate-400">Loading warehouse…</p>
-          </div>
-        </main>
-      </div>
-    );
-  }
+  // Safe Accessors & Calculations
+  const nodeId = warehouse?.id || warehouse?.warehouse_id || "UNK";
+  
+  // Calculate Load
+  const currentLoad = batches.reduce((acc, b) => acc + (Number(b.number_of_batches || b.quantity || 0)), 0);
+  
+  // Calculate Capacity & Percentage
+  const maxCapacity = Number(warehouse?.storage_capacity || 0);
+  const utilizationPercent = maxCapacity > 0 ? Math.min((currentLoad / maxCapacity) * 100, 100) : 0;
+  const displayCapacity = maxCapacity > 0 ? maxCapacity.toLocaleString() : "—";
 
-  if (error && !warehouse) {
-    return (
-      <div className="min-h-screen bg-slate-950 text-slate-50">
-        <Navbar />
-        <main className="mx-auto max-w-5xl px-4 pb-16 pt-8 md:px-8">
-          <button
-            onClick={handleBack}
-            className="mb-4 rounded-full border border-slate-700 bg-slate-900/70 px-3 py-1.5 text-xs text-slate-200 hover:border-cyan-400/70 hover:text-cyan-100"
-          >
-            ← Back
-          </button>
-          <div className="rounded-2xl border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-100">
-            {error || "Warehouse not found."}
-          </div>
-        </main>
-      </div>
-    );
-  }
-
-  if (!warehouse) return null;
-
-  const nodeId =
-    warehouse.id ||
-    warehouse.warehouse_id ||
-    warehouse.warehouseId ||
-    warehouse.warehouseid ||
-    "—";
+  // Helper for progress bar color
+  const getProgressColor = (pct) => {
+    if (pct > 90) return "from-red-500 to-orange-500";
+    if (pct > 75) return "from-amber-400 to-orange-400";
+    return "from-cyan-500 to-emerald-500";
+  };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-50">
+    <div className="min-h-screen w-full bg-[#030712] text-slate-200 font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
+      
+      {/* Background Matrix */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_-20%,#0f172a,transparent)] opacity-60"></div>
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-20"></div>
+      </div>
+
       <Navbar />
-      <main className="mx-auto max-w-5xl px-4 pb-16 pt-8 md:px-8">
-        {/* header */}
-        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <button
-              onClick={handleBack}
-              className="mb-3 rounded-full border border-slate-700 bg-slate-900/70 px-3 py-1.5 text-xs text-slate-200 hover:border-cyan-400/70 hover:text-cyan-100"
-            >
-              ← Back
-            </button>
-            <h1 className="text-2xl font-semibold md:text-3xl">
-              {warehouse.name || warehouse.warehouse_name || "Warehouse"}
-            </h1>
-            <p className="mt-1 text-sm text-slate-400">Node {nodeId}</p>
-          </div>
 
-          {/* actions */}
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={handleAddProduct}
-              className="rounded-2xl border border-slate-700 bg-slate-900/80 px-3 py-1.5 text-xs text-slate-200 hover:border-cyan-400/70 hover:text-cyan-100"
-            >
-              + Add product
-            </button>
-            <button
-              onClick={handleAddSensor}
-              className="rounded-2xl border border-slate-700 bg-slate-900/80 px-3 py-1.5 text-xs text-slate-200 hover:border-cyan-400/70 hover:text-cyan-100"
-            >
-              + Add sensor
-            </button>
-            <button
-              onClick={handleAddBatch}
-              className="rounded-2xl bg-gradient-to-r from-cyan-400 via-sky-400 to-emerald-400 px-3 py-1.5 text-xs font-semibold text-slate-950 shadow-lg shadow-cyan-500/40 hover:shadow-cyan-400/70"
-            >
-              + Add batch
-            </button>
-          </div>
-        </div>
+      <main className="relative z-10 max-w-7xl mx-auto px-6 py-10">
 
-        {/* error banner (non-fatal) */}
-        {error && (
-          <div className="mb-4 rounded-2xl border border-red-500/40 bg-red-500/10 p-3 text-xs text-red-100">
-            {error}
+        {/* --- Loading State --- */}
+        {loading && (
+           <div className="flex flex-col items-center justify-center py-32 space-y-6">
+              <div className="relative">
+                <div className="w-16 h-16 border-4 border-cyan-500/20 border-t-cyan-500 rounded-full animate-spin"></div>
+                <div className="absolute inset-0 w-16 h-16 border-4 border-emerald-500/20 border-b-emerald-500 rounded-full animate-spin-reverse"></div>
+              </div>
+              <div className="text-slate-400 font-mono text-sm animate-pulse">Synchronizing Node Telemetry...</div>
+           </div>
+        )}
+
+        {/* --- Error State --- */}
+        {error && !loading && (
+          <div className="max-w-2xl mx-auto text-center py-20">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-500/10 text-red-500 mb-6">
+               <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+            </div>
+            <h2 className="text-2xl font-bold text-white mb-2">Connection Lost</h2>
+            <p className="text-slate-400 mb-8">{error}</p>
+            <button onClick={() => navigate("/home")} className="px-6 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-medium transition-all">
+              Return to Dashboard
+            </button>
           </div>
         )}
 
-        {/* info cards */}
-        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div className="rounded-2xl border border-slate-800/70 bg-slate-950/60 p-4 text-xs backdrop-blur">
-            <p className="mb-1 text-slate-400">Location</p>
-            <p className="text-sm text-slate-50">
-              {warehouse.location || "Not set"}
-            </p>
-          </div>
-          <div className="rounded-2xl border border-slate-800/70 bg-slate-950/60 p-4 text-xs backdrop-blur">
-            <p className="mb-1 text-slate-400">Capacity</p>
-            <p className="text-sm text-slate-50">
-              {warehouse.storage_capacity != null
-                ? warehouse.storage_capacity
-                : "—"}
-            </p>
-          </div>
-          <div className="rounded-2xl border border-slate-800/70 bg-slate-950/60 p-4 text-xs backdrop-blur">
-            <p className="mb-1 text-slate-400">Batches</p>
-            <p className="text-sm text-slate-50">{batches.length}</p>
-          </div>
-        </div>
-
-        {/* batches list with Dispatch */}
-        <section className="rounded-3xl border border-slate-800/70 bg-slate-950/70 p-5 text-sm text-slate-200">
-          <h2 className="mb-3 text-base font-semibold">Batches</h2>
-          {batches.length === 0 ? (
-            <p className="text-xs text-slate-400">
-              No batches yet for this warehouse.
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {batches.map((b) => {
-                const batchId = b.id || b.batch_id;
-                return (
-                  <div
-                    key={batchId}
-                    className="flex items-center justify-between rounded-2xl border border-slate-800 bg-slate-900/70 px-3 py-2 text-xs"
-                  >
-                    <div>
-                      <p className="font-medium text-slate-100">
-                        Batch {batchId}
-                      </p>
-                      <p className="text-[11px] text-slate-400">
-                        Quantity:{" "}
-                        {b.number_of_batches != null
-                          ? b.number_of_batches
-                          : "—"}
-                      </p>
+        {/* --- Main Content --- */}
+        {!loading && !error && warehouse && (
+          <div className="space-y-8 animate-fade-in-up">
+            
+            {/* Header / Info Deck */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              
+              {/* Identity Card */}
+              <div className="lg:col-span-2 bg-[#0b1121] border border-slate-800 rounded-2xl p-8 relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-6 opacity-20">
+                  <svg className="w-24 h-24 text-cyan-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                </div>
+                
+                <div className="relative z-10">
+                  <button onClick={() => navigate("/home")} className="text-xs font-mono text-cyan-500 hover:text-cyan-400 mb-4 flex items-center gap-2 transition-colors">
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                    NODE_LIST
+                  </button>
+                  
+                  <h1 className="text-3xl font-bold text-white mb-2">{warehouse.name || "Designated Node"}</h1>
+                  <div className="flex flex-wrap gap-4 text-sm">
+                    <div className="flex items-center gap-2 text-slate-400">
+                      <span className="text-slate-600 font-mono">ID:</span>
+                      <span className="font-mono bg-slate-800/50 px-2 py-0.5 rounded text-slate-300">{nodeId}</span>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-[11px] text-slate-400">
-                        Sensor: {b.sensor_id ?? "—"}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleDispatch(b)}
-                        disabled={dispatchingId === batchId}
-                        className="rounded-full border border-emerald-500/60 bg-emerald-500/10 px-3 py-1 text-[11px] font-medium text-emerald-100 hover:bg-emerald-500/20 disabled:opacity-60"
-                      >
-                        {dispatchingId === batchId ? "Dispatching…" : "Dispatch"}
-                      </button>
+                    <div className="flex items-center gap-2 text-slate-400">
+                      <svg className="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                      {warehouse.location || "Sector Unknown"}
                     </div>
                   </div>
-                );
-              })}
+                </div>
+              </div>
+
+              {/* Stats / Control Card - FIXED DYNAMIC BAR */}
+              <div className="bg-[#0b1121] border border-slate-800 rounded-2xl p-6 flex flex-col justify-between">
+                <div>
+                  <h3 className="text-xs font-mono text-slate-500 uppercase tracking-widest mb-4">Capacity Status</h3>
+                  <div className="flex items-end gap-2 mb-2">
+                    <span className="text-4xl font-bold text-white">{currentLoad.toLocaleString()}</span>
+                    <span className="text-sm text-slate-400 mb-1.5">/ {displayCapacity} units</span>
+                  </div>
+                  
+                  {/* Dynamic Progress Bar */}
+                  <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full bg-gradient-to-r ${getProgressColor(utilizationPercent)} opacity-90 transition-all duration-1000 ease-out`}
+                      style={{ width: `${utilizationPercent}%` }}
+                    ></div>
+                  </div>
+                  
+                  {/* Percentage Label */}
+                  <div className="mt-2 text-right text-xs font-mono text-slate-500">
+                    {utilizationPercent.toFixed(1)}% Full
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-6 border-t border-slate-800">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-slate-400">Batches Active</span>
+                    <span className="font-mono text-emerald-400">{batches.length} Payload(s)</span>
+                  </div>
+                </div>
+              </div>
             </div>
-          )}
-        </section>
+
+            {/* --- Action Deck --- */}
+            <div className="p-1 rounded-2xl bg-slate-900/50 border border-slate-800 backdrop-blur-sm flex flex-col md:flex-row gap-2">
+               <button 
+                onClick={() => goWithWarehouse("/create-product")}
+                className="flex-1 px-6 py-4 rounded-xl bg-transparent hover:bg-slate-800 text-slate-300 hover:text-white transition-all flex items-center justify-center gap-3 border border-transparent hover:border-slate-700 group"
+               >
+                 <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center group-hover:bg-indigo-500 group-hover:text-white transition-all">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+                 </div>
+                 <div className="text-left">
+                   <div className="text-sm font-semibold">Add Product</div>
+                   <div className="text-xs text-slate-500 group-hover:text-slate-400">Register SKU</div>
+                 </div>
+               </button>
+
+               <div className="w-px bg-slate-800 hidden md:block"></div>
+
+               <button 
+                onClick={() => goWithWarehouse("/create-sensor")}
+                className="flex-1 px-6 py-4 rounded-xl bg-transparent hover:bg-slate-800 text-slate-300 hover:text-white transition-all flex items-center justify-center gap-3 border border-transparent hover:border-slate-700 group"
+               >
+                 <div className="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center group-hover:bg-purple-500 group-hover:text-white transition-all">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" /></svg>
+                 </div>
+                 <div className="text-left">
+                   <div className="text-sm font-semibold">Add Sensor</div>
+                   <div className="text-xs text-slate-500 group-hover:text-slate-400">IoT Device</div>
+                 </div>
+               </button>
+
+               <div className="w-px bg-slate-800 hidden md:block"></div>
+
+               <button 
+                onClick={() => goWithWarehouse("/add-batch")}
+                className="flex-1 px-6 py-4 rounded-xl bg-transparent hover:bg-slate-800 text-slate-300 hover:text-white transition-all flex items-center justify-center gap-3 border border-transparent hover:border-slate-700 group"
+               >
+                 <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center group-hover:bg-emerald-500 group-hover:text-white transition-all">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                 </div>
+                 <div className="text-left">
+                   <div className="text-sm font-semibold">New Batch</div>
+                   <div className="text-xs text-slate-500 group-hover:text-slate-400">Inbound Logistics</div>
+                 </div>
+               </button>
+            </div>
+
+            {/* --- Inventory Grid --- */}
+            <div>
+              <div className="flex items-center gap-3 mb-6">
+                <span className="w-1.5 h-1.5 rounded-full bg-cyan-500"></span>
+                <h2 className="text-lg font-semibold text-white">Inventory Manifest</h2>
+              </div>
+
+              {batches.length === 0 ? (
+                <div className="border border-dashed border-slate-800 rounded-2xl p-12 text-center bg-slate-900/30">
+                  <div className="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-600">
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
+                  </div>
+                  <h3 className="text-slate-300 font-medium">Empty Manifest</h3>
+                  <p className="text-slate-500 text-sm mt-1">No active batches stored in this node.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {batches.map((b, idx) => (
+                    <div 
+                      key={b.id || b.batch_id || idx} 
+                      className="bg-[#0b1121] border border-slate-800 rounded-xl p-5 hover:border-slate-600 transition-all group hover:shadow-lg hover:shadow-cyan-900/10"
+                      style={{ animationDelay: `${idx * 50}ms` }}
+                    >
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded bg-slate-800 flex items-center justify-center text-slate-400 group-hover:text-cyan-400 transition-colors">
+                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
+                          </div>
+                          <div>
+                            <div className="text-xs font-mono text-slate-500 uppercase">Batch ID</div>
+                            <div className="font-mono text-white">{b.id || b.batch_id}</div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-xs font-mono text-slate-500 uppercase">Qty</div>
+                          <div className="font-bold text-emerald-400">{b.number_of_batches || b.quantity}</div>
+                        </div>
+                      </div>
+
+                      <div className="bg-slate-900/50 rounded-lg p-3 text-xs font-mono text-slate-400 flex justify-between items-center mb-5">
+                        <span>SENSOR LINK:</span>
+                        <span className="text-slate-300">{b.sensor_id || "UNLINKED"}</span>
+                      </div>
+
+                      <button 
+                        onClick={() => handleDispatch(b)}
+                        disabled={dispatchingId === (b.id || b.batch_id)}
+                        className="w-full py-2.5 rounded-lg border border-slate-700 text-slate-300 hover:bg-red-500/10 hover:border-red-500/50 hover:text-red-400 transition-all text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                         {dispatchingId === (b.id || b.batch_id) ? (
+                            <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                         ) : (
+                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" /></svg>
+                         )}
+                         {dispatchingId === (b.id || b.batch_id) ? "Dispatching..." : "Dispatch Batch"}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+          </div>
+        )}
       </main>
+
+      <style>{`
+        @keyframes fade-in-up {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes spin-reverse {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(-360deg); }
+        }
+        .animate-fade-in-up { animation: fade-in-up 0.6s ease-out forwards; }
+        .animate-spin-reverse { animation: spin-reverse 3s linear infinite; }
+      `}</style>
     </div>
   );
 }

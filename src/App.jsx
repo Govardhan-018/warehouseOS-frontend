@@ -8,6 +8,7 @@ import Addbatches from "./pages/addBatches";
 import Creatproduct from "./pages/creatProduct";
 import Createsensor from "./pages/creatSensor";
 import Alerts from "./pages/alerts";
+import UtilityPage from "./pages/utility";
 
 function App() {
   return (
@@ -22,6 +23,11 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route path="/utility" element={
+          <ProtectedRoute>
+            <UtilityPage/>
+          </ProtectedRoute>
+        } />
         <Route path="alerts" element={
           <ProtectedRoute>
             <Alerts/>
