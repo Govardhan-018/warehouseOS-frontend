@@ -93,7 +93,7 @@ function Home() {
     const warehouseId = warehouse.id || warehouse.warehouse_id || warehouse.warehouseId || warehouse.warehouseid;
 
     localStorage.setItem("currentWarehouse", JSON.stringify(warehouse));
-    
+
     if (warehouseId) {
       navigate("/warehouse");
     } else {
@@ -103,7 +103,7 @@ function Home() {
 
   return (
     <div className="min-h-screen w-full bg-[#030712] text-slate-200 font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
-      
+
       {/* Background Ambience */}
       <div className="fixed inset-0 z-0 pointer-events-none">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_-20%,#1e293b,transparent)] opacity-40"></div>
@@ -113,7 +113,7 @@ function Home() {
       <Navbar />
 
       <main className="relative z-10 px-6 py-10 max-w-7xl mx-auto">
-        
+
         {/* --- Dashboard Header --- */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10 animate-fade-in-down">
           <div>
@@ -128,16 +128,16 @@ function Home() {
               Real-time infrastructure monitoring across all active nodes.
             </p>
           </div>
-          
+
           <div className="flex gap-3">
-            <button 
+            <button
               onClick={() => window.location.reload()}
               className="px-4 py-2.5 rounded-xl border border-slate-700 hover:bg-slate-800 text-slate-400 hover:text-white transition-all text-sm font-medium flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
               Sync
             </button>
-            <button 
+            <button
               onClick={handleCreateWarehouse}
               className="px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-sm shadow-lg shadow-cyan-900/20 transition-all flex items-center gap-2"
             >
@@ -169,7 +169,7 @@ function Home() {
           <>
             {/* --- Stats Grid --- */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-10 animate-fade-in-up">
-              
+
               {/* Card 1: Active Nodes */}
               <div className="bg-[#0b1121] border border-slate-800 rounded-2xl p-5 hover:border-slate-600 transition-colors group">
                 <div className="flex justify-between items-start mb-4">
@@ -183,7 +183,7 @@ function Home() {
               </div>
 
               {/* Card 2: Alerts */}
-              <button 
+              <button
                 onClick={() => navigate("/alerts")}
                 className={`bg-[#0b1121] border rounded-2xl p-5 text-left transition-all hover:-translate-y-1 ${alertsCount > 0 ? 'border-red-900/50 hover:border-red-500/50 shadow-[0_0_20px_rgba(239,68,68,0.1)]' : 'border-slate-800 hover:border-slate-600'}`}
               >
@@ -198,7 +198,7 @@ function Home() {
               </button>
 
               {/* Card 3: Utilization */}
-              <button 
+              <button
                 onClick={() => navigate("/utility")}
                 className="bg-[#0b1121] border border-slate-800 rounded-2xl p-5 hover:border-emerald-500/50 hover:shadow-[0_0_20px_rgba(16,185,129,0.1)] transition-all text-left group hover:-translate-y-1"
               >
@@ -225,6 +225,23 @@ function Home() {
                 </div>
                 <div className="text-sm text-slate-400">Total Capacity</div>
               </div>
+
+              {/* Card 5: AI Intelligence */}
+              <button
+                onClick={() => navigate("/ai-report")}
+                className="bg-[#0b1121] border border-slate-800 rounded-2xl p-5 hover:border-purple-500/50 hover:shadow-[0_0_20px_rgba(168,85,247,0.1)] transition-all text-left group hover:-translate-y-1 col-span-1 md:col-span-2 lg:col-span-1"
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <div className="p-2 bg-purple-500/10 rounded-lg text-purple-400 group-hover:bg-purple-500/20 transition-colors">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
+                  </div>
+                  <span className="flex h-2 w-2 rounded-full bg-purple-500 animate-pulse"></span>
+                </div>
+                <div className="text-xl font-bold text-white mb-1 group-hover:text-purple-300">
+                  AI Intelligence
+                </div>
+                <div className="text-sm text-slate-400">Generate Report</div>
+              </button>
             </div>
 
             {/* --- Nodes Grid --- */}
@@ -255,7 +272,7 @@ function Home() {
                   >
                     {/* Subtle gradient overlay on hover */}
                     <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                    
+
                     <div className="relative z-10">
                       <div className="flex justify-between items-start mb-6">
                         <div className="flex flex-col">

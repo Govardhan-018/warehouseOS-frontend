@@ -9,6 +9,7 @@ import Creatproduct from "./pages/creatProduct";
 import Createsensor from "./pages/creatSensor";
 import Alerts from "./pages/alerts";
 import UtilityPage from "./pages/utility";
+import AIReport from "./pages/aiReport";
 
 function App() {
   return (
@@ -25,12 +26,17 @@ function App() {
         />
         <Route path="/utility" element={
           <ProtectedRoute>
-            <UtilityPage/>
+            <UtilityPage />
           </ProtectedRoute>
         } />
         <Route path="alerts" element={
           <ProtectedRoute>
-            <Alerts/>
+            <Alerts />
+          </ProtectedRoute>
+        } />
+        <Route path="/ai-report" element={
+          <ProtectedRoute>
+            <AIReport />
           </ProtectedRoute>
         } />
         <Route
@@ -43,17 +49,17 @@ function App() {
         />
         <Route path="/add-batch" element={
           <ProtectedRoute>
-            <Addbatches/>
+            <Addbatches />
           </ProtectedRoute>
         } />
         <Route path="/create-product" element={
           <ProtectedRoute>
-            <Creatproduct/>
+            <Creatproduct />
           </ProtectedRoute>
         } />
         <Route path="/create-sensor" element={
           <ProtectedRoute>
-            <Createsensor/>
+            <Createsensor />
           </ProtectedRoute>
         } />
         <Route
